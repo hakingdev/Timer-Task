@@ -120,7 +120,7 @@ class TimeTrackerScreen extends StatelessWidget {
               },
               child: Text(timeTrackerModel.isTracking
                   ? 'Stop Tracking'
-                  : 'Start Tracking'),
+                  : 'Start Tracking1'),
             ),
             SizedBox(height: 10),
             ElevatedButton(
