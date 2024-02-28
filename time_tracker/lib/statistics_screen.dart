@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:time_tracker/time_tracker_model.dart';
 
@@ -9,26 +10,74 @@ class StatisticsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final timeTrackerModel = Provider.of<TimeTrackerModel>(context);
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          'Total Time Spent: ${timeTrackerModel.getTotalTimeSpent()} seconds',
-          style: TextStyle(fontSize: 18),
-        ),
-        Text(
-          'Category with Most Time: ${_getCategoryWithMostTime(timeTrackerModel)}',
-          style: TextStyle(fontSize: 18),
-        ),
-        if (timeTrackerModel.getTotalTimeSpent() >
-            0.5 * _getTotalTimeInMinutes(TaskCategory.values, timeTrackerModel))
+    return Container(
+      width: double.infinity, // Ширина по максимуму
+      padding: EdgeInsets.all(16), // Отступы для визуального комфорта
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
           Text(
-            'Advice: Consider reducing time spent on ${_getCategoryWithMostTime(timeTrackerModel)}',
+            'Total Time Spent: ${timeTrackerModel.getTotalTimeSpent()} seconds',
             style: TextStyle(fontSize: 18),
           ),
-      ],
+          Text(
+            'Category with Most Time: ${_getCategoryWithMostTime(timeTrackerModel)}',
+            style: TextStyle(fontSize: 18),
+          ),
+          if (timeTrackerModel.getTotalTimeSpent() >
+              3601 *
+                  _getTotalTimeInMinutes(TaskCategory.values, timeTrackerModel))
+            Text(
+              'Advice: Consider reducing time spent on ${_getCategoryWithMostTime(timeTrackerModel)}',
+              style: TextStyle(fontSize: 18),
+            ),
+          SizedBox(height: 20),
+          Container(
+            width: 300, // Ширина графика
+            height: 300, // Высота графика
+            child: PieChart(
+              PieChartData(
+                sections: _generatePieChartSections(timeTrackerModel),
+                centerSpaceRadius: 40,
+                sectionsSpace: 0,
+                pieTouchData: PieTouchData(
+                  touchCallback:
+                      (FlTouchEvent event, PieTouchResponse? response) {
+                    // Handle touch interactions if needed
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  List<PieChartSectionData> _generatePieChartSections(
+      TimeTrackerModel timeTrackerModel) {
+    final List<TaskCategory> categories = TaskCategory.values;
+    final List<Color> categoryColors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange
+    ];
+
+    final List<PieChartSectionData> pieChartSections =
+        categories.map((category) {
+      final double categoryTime =
+          timeTrackerModel.getTotalTimeForCategory(category).toDouble();
+      return PieChartSectionData(
+        color: categoryColors[category.index],
+        value: categoryTime,
+        title: categoryTime.round().toString(),
+        radius: 100,
+        titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      );
+    }).toList();
+
+    return pieChartSections;
   }
 
   String _getCategoryWithMostTime(TimeTrackerModel timeTrackerModel) {
