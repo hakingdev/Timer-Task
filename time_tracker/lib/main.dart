@@ -16,7 +16,7 @@ class Task {
   String name;
   int totalTimeInSeconds;
   int elapsedTimeInSeconds;
-  TaskCategory category; // Добавлено поле для хранения категории
+  TaskCategory category;
 
   Task({
     required this.name,
@@ -31,6 +31,11 @@ class TimeTrackerModel extends ChangeNotifier {
   List<Task> tasks = [];
   Task? currentTask;
 
+  // Добавлены переменные для отслеживания времени по категориям
+  int totalWorkTimeInSeconds = 0;
+  int totalSocialMediaTimeInSeconds = 0;
+  int totalFamilyTimeInSeconds = 0;
+
   void startTracking(Task task) {
     currentTask = task;
     currentTask!.elapsedTimeInSeconds = 0;
@@ -43,6 +48,18 @@ class TimeTrackerModel extends ChangeNotifier {
         timer.cancel();
       } else {
         currentTask!.elapsedTimeInSeconds++;
+        // Обновление времени по категориям
+        switch (currentTask!.category) {
+          case TaskCategory.Work:
+            totalWorkTimeInSeconds++;
+            break;
+          case TaskCategory.SocialMedia:
+            totalSocialMediaTimeInSeconds++;
+            break;
+          case TaskCategory.Family:
+            totalFamilyTimeInSeconds++;
+            break;
+        }
         notifyListeners();
       }
     });
@@ -62,6 +79,12 @@ class TimeTrackerModel extends ChangeNotifier {
       task.totalTimeInSeconds = 0;
       task.elapsedTimeInSeconds = 0;
     }
+
+    // Сброс времени по категориям
+    totalWorkTimeInSeconds = 0;
+    totalSocialMediaTimeInSeconds = 0;
+    totalFamilyTimeInSeconds = 0;
+
     notifyListeners();
   }
 
@@ -73,6 +96,18 @@ class TimeTrackerModel extends ChangeNotifier {
   void setCurrentTask(Task task) {
     currentTask = task;
     notifyListeners();
+  }
+
+  // Добавлены методы для получения общего времени по категориям
+  int getTotalTimeForCategory(TaskCategory category) {
+    switch (category) {
+      case TaskCategory.Work:
+        return totalWorkTimeInSeconds;
+      case TaskCategory.SocialMedia:
+        return totalSocialMediaTimeInSeconds;
+      case TaskCategory.Family:
+        return totalFamilyTimeInSeconds;
+    }
   }
 }
 
@@ -119,6 +154,19 @@ class TimeTrackerScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18),
               ),
             SizedBox(height: 20),
+            Text(
+              'Total Time Spent on Work: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.Work)} seconds',
+              style: TextStyle(fontSize: 18),
+            ),
+            Text(
+              'Total Time Spent on Social Media: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.SocialMedia)} seconds',
+              style: TextStyle(fontSize: 18),
+            ),
+            Text(
+              'Total Time Spent on Family: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.Family)} seconds',
+              style: TextStyle(fontSize: 18),
+            ),
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 if (timeTrackerModel.isTracking) {
@@ -127,9 +175,7 @@ class TimeTrackerScreen extends StatelessWidget {
                   _showTaskInputDialog(context, timeTrackerModel);
                 }
               },
-              child: Text(timeTrackerModel.isTracking
-                  ? 'Stop Tracking'
-                  : 'Start Tracking'),
+              child: Text(timeTrackerModel.isTracking ? 'Stop Tracking' : 'Start Tracking'),
             ),
             SizedBox(height: 10),
             ElevatedButton(
@@ -151,8 +197,7 @@ class TimeTrackerScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _showTaskInputDialog(
-      BuildContext context, TimeTrackerModel model) async {
+  Future<void> _showTaskInputDialog(BuildContext context, TimeTrackerModel model) async {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -191,8 +236,7 @@ class TimeTrackerScreen extends StatelessWidget {
             TextButton(
               onPressed: () {
                 final taskName = _taskController.text.trim();
-                final taskCategory = TaskCategory
-                    .Work; // Placeholder, replace with selected category
+                final taskCategory = TaskCategory.Work; // Placeholder, replace with selected category
                 if (taskName.isNotEmpty) {
                   final newTask = Task(name: taskName, category: taskCategory);
                   model.addTask(newTask);
