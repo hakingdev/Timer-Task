@@ -6,15 +6,24 @@ void main() {
   runApp(MyApp());
 }
 
+enum TaskCategory {
+  Work,
+  SocialMedia,
+  Family,
+}
+
 class Task {
   String name;
   int totalTimeInSeconds;
   int elapsedTimeInSeconds;
+  TaskCategory category; // Добавлено поле для хранения категории
 
-  Task(
-      {required this.name,
-      this.totalTimeInSeconds = 0,
-      this.elapsedTimeInSeconds = 0});
+  Task({
+    required this.name,
+    this.totalTimeInSeconds = 0,
+    this.elapsedTimeInSeconds = 0,
+    required this.category,
+  });
 }
 
 class TimeTrackerModel extends ChangeNotifier {
@@ -106,7 +115,7 @@ class TimeTrackerScreen extends StatelessWidget {
               ),
             for (var task in timeTrackerModel.tasks)
               Text(
-                'Total Time Spent on ${task.name}: ${task.totalTimeInSeconds} seconds',
+                'Total Time Spent on ${task.name} (${_categoryToString(task.category)}): ${task.totalTimeInSeconds} seconds',
                 style: TextStyle(fontSize: 18),
               ),
             SizedBox(height: 20),
@@ -149,9 +158,28 @@ class TimeTrackerScreen extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Enter Task'),
-          content: TextFormField(
-            controller: _taskController,
-            decoration: InputDecoration(hintText: 'Task Name'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _taskController,
+                decoration: InputDecoration(hintText: 'Task Name'),
+              ),
+              SizedBox(height: 10),
+              DropdownButtonFormField<TaskCategory>(
+                value: TaskCategory.Work,
+                items: TaskCategory.values.map((category) {
+                  return DropdownMenuItem<TaskCategory>(
+                    value: category,
+                    child: Text(_categoryToString(category)),
+                  );
+                }).toList(),
+                onChanged: (selectedCategory) {
+                  // Handle category selection
+                },
+                decoration: InputDecoration(labelText: 'Category'),
+              ),
+            ],
           ),
           actions: <Widget>[
             TextButton(
@@ -163,8 +191,10 @@ class TimeTrackerScreen extends StatelessWidget {
             TextButton(
               onPressed: () {
                 final taskName = _taskController.text.trim();
+                final taskCategory = TaskCategory
+                    .Work; // Placeholder, replace with selected category
                 if (taskName.isNotEmpty) {
-                  final newTask = Task(name: taskName);
+                  final newTask = Task(name: taskName, category: taskCategory);
                   model.addTask(newTask);
                   model.startTracking(newTask);
                   Navigator.of(context).pop();
@@ -176,5 +206,16 @@ class TimeTrackerScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _categoryToString(TaskCategory category) {
+    switch (category) {
+      case TaskCategory.Work:
+        return 'Work';
+      case TaskCategory.SocialMedia:
+        return 'Social Media';
+      case TaskCategory.Family:
+        return 'Family';
+    }
   }
 }
