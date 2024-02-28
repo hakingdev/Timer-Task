@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 void main() {
   runApp(MyApp());
@@ -17,12 +18,14 @@ class Task {
   int totalTimeInSeconds;
   int elapsedTimeInSeconds;
   TaskCategory category;
+  DateTime date;
 
   Task({
     required this.name,
     this.totalTimeInSeconds = 0,
     this.elapsedTimeInSeconds = 0,
     required this.category,
+    required this.date,
   });
 }
 
@@ -31,10 +34,11 @@ class TimeTrackerModel extends ChangeNotifier {
   List<Task> tasks = [];
   Task? currentTask;
 
-  // Добавлены переменные для отслеживания времени по категориям
   int totalWorkTimeInSeconds = 0;
   int totalSocialMediaTimeInSeconds = 0;
   int totalFamilyTimeInSeconds = 0;
+
+  DateTime selectedDate = DateTime.now();
 
   void startTracking(Task task) {
     currentTask = task;
@@ -48,7 +52,6 @@ class TimeTrackerModel extends ChangeNotifier {
         timer.cancel();
       } else {
         currentTask!.elapsedTimeInSeconds++;
-        // Обновление времени по категориям
         switch (currentTask!.category) {
           case TaskCategory.Work:
             totalWorkTimeInSeconds++;
@@ -80,7 +83,6 @@ class TimeTrackerModel extends ChangeNotifier {
       task.elapsedTimeInSeconds = 0;
     }
 
-    // Сброс времени по категориям
     totalWorkTimeInSeconds = 0;
     totalSocialMediaTimeInSeconds = 0;
     totalFamilyTimeInSeconds = 0;
@@ -98,7 +100,18 @@ class TimeTrackerModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Добавлены методы для получения общего времени по категориям
+  void setCurrentTaskDate(DateTime date) {
+    if (currentTask != null) {
+      currentTask!.date = date;
+      notifyListeners();
+    }
+  }
+
+  void updateSelectedDate(DateTime date) {
+    selectedDate = date;
+    notifyListeners();
+  }
+
   int getTotalTimeForCategory(TaskCategory category) {
     switch (category) {
       case TaskCategory.Work:
@@ -108,6 +121,17 @@ class TimeTrackerModel extends ChangeNotifier {
       case TaskCategory.Family:
         return totalFamilyTimeInSeconds;
     }
+  }
+
+  int getTotalTimeForCategoryAndDate(
+      TaskCategory category, DateTime selectedDate) {
+    return tasks
+        .where((task) =>
+            task.category == category &&
+            task.date.year == selectedDate.year &&
+            task.date.month == selectedDate.month &&
+            task.date.day == selectedDate.day)
+        .fold(0, (sum, task) => sum + task.totalTimeInSeconds);
   }
 }
 
@@ -120,7 +144,35 @@ class MyApp extends StatelessWidget {
       create: (context) => TimeTrackerModel(),
       child: MaterialApp(
         title: 'Time Tracker',
-        home: TimeTrackerScreen(),
+        home: HomeScreen(),
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Time Tracker'),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Tracker'),
+              Tab(text: 'Calendar'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            TimeTrackerScreen(),
+            CalendarScreen(),
+          ],
+        ),
       ),
     );
   }
@@ -135,69 +187,67 @@ class TimeTrackerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final timeTrackerModel = Provider.of<TimeTrackerModel>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Time Tracker'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (timeTrackerModel.currentTask != null)
-              Text(
-                'Elapsed Time: ${timeTrackerModel.currentTask!.elapsedTimeInSeconds} seconds',
-                style: TextStyle(fontSize: 18),
-              ),
-            for (var task in timeTrackerModel.tasks)
-              Text(
-                'Total Time Spent on ${task.name} (${_categoryToString(task.category)}): ${task.totalTimeInSeconds} seconds',
-                style: TextStyle(fontSize: 18),
-              ),
-            SizedBox(height: 20),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (timeTrackerModel.currentTask != null)
             Text(
-              'Total Time Spent on Work: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.Work)} seconds',
+              'Elapsed Time: ${timeTrackerModel.currentTask!.elapsedTimeInSeconds} seconds',
               style: TextStyle(fontSize: 18),
             ),
+          for (var task in timeTrackerModel.tasks)
             Text(
-              'Total Time Spent on Social Media: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.SocialMedia)} seconds',
+              'Total Time Spent on ${task.name} (${_categoryToString(task.category)}): ${task.totalTimeInSeconds} seconds',
               style: TextStyle(fontSize: 18),
             ),
-            Text(
-              'Total Time Spent on Family: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.Family)} seconds',
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                if (timeTrackerModel.isTracking) {
-                  timeTrackerModel.stopTracking();
-                } else {
-                  _showTaskInputDialog(context, timeTrackerModel);
-                }
-              },
-              child: Text(timeTrackerModel.isTracking ? 'Stop Tracking' : 'Start Tracking'),
-            ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                timeTrackerModel.resetTracking();
-              },
-              child: Text('Reset'),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
+          SizedBox(height: 20),
+          Text(
+            'Total Time Spent on Work: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.Work)} seconds',
+            style: TextStyle(fontSize: 18),
+          ),
+          Text(
+            'Total Time Spent on Social Media: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.SocialMedia)} seconds',
+            style: TextStyle(fontSize: 18),
+          ),
+          Text(
+            'Total Time Spent on Family: ${timeTrackerModel.getTotalTimeForCategory(TaskCategory.Family)} seconds',
+            style: TextStyle(fontSize: 18),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              if (timeTrackerModel.isTracking) {
+                timeTrackerModel.stopTracking();
+              } else {
                 _showTaskInputDialog(context, timeTrackerModel);
-              },
-              child: Text('Add Task'),
-            ),
-          ],
-        ),
+              }
+            },
+            child: Text(timeTrackerModel.isTracking
+                ? 'Stop Tracking'
+                : 'Start Tracking'),
+          ),
+          SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: () {
+              timeTrackerModel.resetTracking();
+            },
+            child: Text('Reset'),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              _showTaskInputDialog(context, timeTrackerModel);
+            },
+            child: Text('Add Task'),
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _showTaskInputDialog(BuildContext context, TimeTrackerModel model) async {
+  Future<void> _showTaskInputDialog(
+      BuildContext context, TimeTrackerModel model) async {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -236,9 +286,14 @@ class TimeTrackerScreen extends StatelessWidget {
             TextButton(
               onPressed: () {
                 final taskName = _taskController.text.trim();
-                final taskCategory = TaskCategory.Work; // Placeholder, replace with selected category
+                final taskCategory = TaskCategory
+                    .Work; // Placeholder, replace with selected category
                 if (taskName.isNotEmpty) {
-                  final newTask = Task(name: taskName, category: taskCategory);
+                  final newTask = Task(
+                    name: taskName,
+                    category: taskCategory,
+                    date: DateTime.now(),
+                  );
                   model.addTask(newTask);
                   model.startTracking(newTask);
                   Navigator.of(context).pop();
@@ -251,7 +306,55 @@ class TimeTrackerScreen extends StatelessWidget {
       },
     );
   }
-  
+
+  String _categoryToString(TaskCategory category) {
+    switch (category) {
+      case TaskCategory.Work:
+        return 'Work';
+      case TaskCategory.SocialMedia:
+        return 'Social Media';
+      case TaskCategory.Family:
+        return 'Family';
+    }
+  }
+}
+
+class CalendarScreen extends StatelessWidget {
+  const CalendarScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final timeTrackerModel = Provider.of<TimeTrackerModel>(context);
+
+    return Column(
+      children: [
+        TableCalendar(
+          firstDay: DateTime.utc(2022, 1, 1),
+          lastDay: DateTime.utc(2024, 12, 31),
+          focusedDay: timeTrackerModel.selectedDate,
+          calendarFormat: CalendarFormat.month,
+          onDaySelected: (selectedDay, focusedDay) {
+            print('Selected Day: $selectedDay');
+            timeTrackerModel.updateSelectedDate(selectedDay);
+          },
+          selectedDayPredicate: (day) {
+            return isSameDay(day, timeTrackerModel.selectedDate);
+          },
+        ),
+        SizedBox(height: 20),
+        if (timeTrackerModel.currentTask != null)
+          Text(
+            'Elapsed Time: ${timeTrackerModel.currentTask!.elapsedTimeInSeconds} seconds',
+            style: TextStyle(fontSize: 18),
+          ),
+        for (var category in TaskCategory.values)
+          Text(
+            'Total Time Spent on ${_categoryToString(category)}: ${timeTrackerModel.getTotalTimeForCategoryAndDate(category, timeTrackerModel.selectedDate)} seconds',
+            style: TextStyle(fontSize: 18),
+          ),
+      ],
+    );
+  }
 
   String _categoryToString(TaskCategory category) {
     switch (category) {
