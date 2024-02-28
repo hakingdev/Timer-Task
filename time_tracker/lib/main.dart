@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(MyApp());
@@ -38,7 +39,16 @@ class TimeTrackerModel extends ChangeNotifier {
   int totalSocialMediaTimeInSeconds = 0;
   int totalFamilyTimeInSeconds = 0;
 
-  DateTime selectedDate = DateTime.now();
+  TaskCategory? selectedCategory;
+
+  DateTime _selectedDate = DateTime.now();
+
+  DateTime get selectedDate => _selectedDate;
+
+  set selectedDate(DateTime value) {
+    _selectedDate = value;
+    notifyListeners();
+  } // Добавлено новое поле
 
   void startTracking(Task task) {
     currentTask = task;
@@ -100,18 +110,6 @@ class TimeTrackerModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setCurrentTaskDate(DateTime date) {
-    if (currentTask != null) {
-      currentTask!.date = date;
-      notifyListeners();
-    }
-  }
-
-  void updateSelectedDate(DateTime date) {
-    selectedDate = date;
-    notifyListeners();
-  }
-
   int getTotalTimeForCategory(TaskCategory category) {
     switch (category) {
       case TaskCategory.Work:
@@ -132,6 +130,38 @@ class TimeTrackerModel extends ChangeNotifier {
             task.date.month == selectedDate.month &&
             task.date.day == selectedDate.day)
         .fold(0, (sum, task) => sum + task.totalTimeInSeconds);
+  }
+
+  // Новые методы для обновления выбранной категории
+  void updateSelectedCategory(TaskCategory category) {
+    selectedCategory = category;
+    notifyListeners();
+  }
+
+  TaskCategory getSelectedCategory() {
+    return selectedCategory ?? TaskCategory.Work;
+  }
+
+  // Новый метод для получения процентного соотношения времени по категориям
+  Map<TaskCategory, double> getCategoryPercentages() {
+    final totalSeconds = totalWorkTimeInSeconds +
+        totalSocialMediaTimeInSeconds +
+        totalFamilyTimeInSeconds;
+
+    if (totalSeconds == 0) {
+      return {
+        TaskCategory.Work: 0,
+        TaskCategory.SocialMedia: 0,
+        TaskCategory.Family: 0,
+      };
+    }
+
+    return {
+      TaskCategory.Work: (totalWorkTimeInSeconds / totalSeconds) * 100,
+      TaskCategory.SocialMedia:
+          (totalSocialMediaTimeInSeconds / totalSeconds) * 100,
+      TaskCategory.Family: (totalFamilyTimeInSeconds / totalSeconds) * 100,
+    };
   }
 }
 
@@ -156,7 +186,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3, // Увеличено количество вкладок
       child: Scaffold(
         appBar: AppBar(
           title: Text('Time Tracker'),
@@ -164,6 +194,7 @@ class HomeScreen extends StatelessWidget {
             tabs: [
               Tab(text: 'Tracker'),
               Tab(text: 'Calendar'),
+              Tab(text: 'Statistics'), // Новая вкладка
             ],
           ),
         ),
@@ -171,6 +202,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             TimeTrackerScreen(),
             CalendarScreen(),
+            StatisticsScreen(), // Новая вкладка
           ],
         ),
       ),
@@ -262,7 +294,7 @@ class TimeTrackerScreen extends StatelessWidget {
               ),
               SizedBox(height: 10),
               DropdownButtonFormField<TaskCategory>(
-                value: TaskCategory.Work,
+                value: model.getSelectedCategory(),
                 items: TaskCategory.values.map((category) {
                   return DropdownMenuItem<TaskCategory>(
                     value: category,
@@ -270,7 +302,7 @@ class TimeTrackerScreen extends StatelessWidget {
                   );
                 }).toList(),
                 onChanged: (selectedCategory) {
-                  // Handle category selection
+                  model.updateSelectedCategory(selectedCategory!);
                 },
                 decoration: InputDecoration(labelText: 'Category'),
               ),
@@ -286,8 +318,7 @@ class TimeTrackerScreen extends StatelessWidget {
             TextButton(
               onPressed: () {
                 final taskName = _taskController.text.trim();
-                final taskCategory = TaskCategory
-                    .Work; // Placeholder, replace with selected category
+                final taskCategory = model.getSelectedCategory();
                 if (taskName.isNotEmpty) {
                   final newTask = Task(
                     name: taskName,
@@ -334,11 +365,9 @@ class CalendarScreen extends StatelessWidget {
           focusedDay: timeTrackerModel.selectedDate,
           calendarFormat: CalendarFormat.month,
           onDaySelected: (selectedDay, focusedDay) {
+            timeTrackerModel.selectedDate = selectedDay;
+            // Handle day selection
             print('Selected Day: $selectedDay');
-            timeTrackerModel.updateSelectedDate(selectedDay);
-          },
-          selectedDayPredicate: (day) {
-            return isSameDay(day, timeTrackerModel.selectedDate);
           },
         ),
         SizedBox(height: 20),
@@ -353,6 +382,75 @@ class CalendarScreen extends StatelessWidget {
             style: TextStyle(fontSize: 18),
           ),
       ],
+    );
+  }
+
+  String _categoryToString(TaskCategory category) {
+    switch (category) {
+      case TaskCategory.Work:
+        return 'Work';
+      case TaskCategory.SocialMedia:
+        return 'Social Media';
+      case TaskCategory.Family:
+        return 'Family';
+    }
+  }
+}
+
+class StatisticsScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final timeTrackerModel = Provider.of<TimeTrackerModel>(context);
+
+    final totalSeconds = timeTrackerModel.totalWorkTimeInSeconds +
+        timeTrackerModel.totalSocialMediaTimeInSeconds +
+        timeTrackerModel.totalFamilyTimeInSeconds;
+
+    final categoryPercentages = timeTrackerModel.getCategoryPercentages();
+
+    String advice = '';
+    if (totalSeconds > 0 && categoryPercentages[TaskCategory.Work]! > 50) {
+      advice = 'Consider reducing time spent on Work activities.';
+    } else if (totalSeconds > 0 &&
+        categoryPercentages[TaskCategory.SocialMedia]! > 50) {
+      advice = 'Consider reducing time spent on Social Media activities.';
+    } else if (totalSeconds > 0 &&
+        categoryPercentages[TaskCategory.Family]! > 50) {
+      advice = 'Consider reducing time spent on Family activities.';
+    }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Total Time Spent: $totalSeconds seconds',
+            style: TextStyle(fontSize: 18),
+          ),
+          SizedBox(height: 20),
+          for (var category in TaskCategory.values)
+            Text(
+              'Total Time Spent on ${_categoryToString(category)}: ${timeTrackerModel.getTotalTimeForCategory(category)} seconds',
+              style: TextStyle(fontSize: 18),
+            ),
+          SizedBox(height: 20),
+          Text(
+            'Category Percentage Breakdown:',
+            style: TextStyle(fontSize: 18),
+          ),
+          for (var entry in categoryPercentages.entries)
+            Text(
+              '${_categoryToString(entry.key)}: ${entry.value}%',
+              style: TextStyle(fontSize: 18),
+            ),
+          SizedBox(height: 20),
+          if (advice.isNotEmpty)
+            Text(
+              'Advice: $advice',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+        ],
+      ),
     );
   }
 
