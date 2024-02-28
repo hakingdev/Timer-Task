@@ -251,6 +251,7 @@ class TimeTrackerScreen extends StatelessWidget {
       },
     );
   }
+  
 
   String _categoryToString(TaskCategory category) {
     switch (category) {
