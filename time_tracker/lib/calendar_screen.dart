@@ -16,8 +16,16 @@ class CalendarScreen extends StatelessWidget {
           focusedDay: timeTrackerModel.selectedDate,
           calendarFormat: CalendarFormat.month,
           onDaySelected: (selectedDay, focusedDay) {
-            timeTrackerModel.selectedDate = selectedDay;
-            print('Selected Day: $selectedDay');
+            if (isSameDay(selectedDay, timeTrackerModel.selectedDate)) {
+              // Дата уже выбрана, сбрасываем выбор
+              timeTrackerModel.selectedDate = DateTime.now();
+            } else {
+              // Выбираем новую дату
+              timeTrackerModel.selectedDate = selectedDay;
+            }
+          },
+          selectedDayPredicate: (day) {
+            return isSameDay(day, timeTrackerModel.selectedDate);
           },
         ),
         SizedBox(height: 20),

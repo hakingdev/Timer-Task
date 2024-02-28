@@ -24,6 +24,15 @@ class Task {
 }
 
 class TimeTrackerModel extends ChangeNotifier {
+  DateTime _selectedDate = DateTime.now();
+
+  DateTime get selectedDate => _selectedDate;
+
+  set selectedDate(DateTime date) {
+    _selectedDate = date;
+    notifyListeners();
+  }
+
   bool isTracking = false;
   List<Task> tasks = [];
   Task? currentTask;
@@ -33,9 +42,6 @@ class TimeTrackerModel extends ChangeNotifier {
     TaskCategory.SocialMedia: 0,
     TaskCategory.Family: 0,
   };
-
-  DateTime selectedDate = DateTime.now();
-
   void startTracking(Task task) {
     currentTask = task;
     currentTask!.elapsedTimeInSeconds = 0;

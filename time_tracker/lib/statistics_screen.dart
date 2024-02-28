@@ -11,8 +11,8 @@ class StatisticsScreen extends StatelessWidget {
     final timeTrackerModel = Provider.of<TimeTrackerModel>(context);
 
     return Container(
-      width: double.infinity, // Ширина по максимуму
-      padding: EdgeInsets.all(16), // Отступы для визуального комфорта
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -33,9 +33,30 @@ class StatisticsScreen extends StatelessWidget {
               style: TextStyle(fontSize: 18),
             ),
           SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildCategoryLegend(
+                TaskCategory.Work,
+                Colors.blue,
+                'Work',
+              ),
+              _buildCategoryLegend(
+                TaskCategory.SocialMedia,
+                Colors.green,
+                'Social Media',
+              ),
+              _buildCategoryLegend(
+                TaskCategory.Family,
+                Colors.orange,
+                'Family',
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
           Container(
-            width: 300, // Ширина графика
-            height: 300, // Высота графика
+            width: 300,
+            height: 300,
             child: PieChart(
               PieChartData(
                 sections: _generatePieChartSections(timeTrackerModel),
@@ -61,7 +82,7 @@ class StatisticsScreen extends StatelessWidget {
     final List<Color> categoryColors = [
       Colors.blue,
       Colors.green,
-      Colors.orange
+      Colors.orange,
     ];
 
     final List<PieChartSectionData> pieChartSections =
@@ -78,6 +99,24 @@ class StatisticsScreen extends StatelessWidget {
     }).toList();
 
     return pieChartSections;
+  }
+
+  Widget _buildCategoryLegend(
+      TaskCategory category, Color color, String categoryName) {
+    return Column(
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          color: color,
+        ),
+        SizedBox(height: 5),
+        Text(
+          categoryName,
+          style: TextStyle(fontSize: 14),
+        ),
+      ],
+    );
   }
 
   String _getCategoryWithMostTime(TimeTrackerModel timeTrackerModel) {
